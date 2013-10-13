@@ -1,0 +1,79 @@
+<?php
+
+/**
+ * ProcessWire Page Tree State
+ *
+ * 13/10/2013 by Ryan (Mackski) McAvoy
+ *
+ * ProcessWire 2.x
+ * Copyright (C) 2010 by Ryan Cramer
+ * Licensed under GNU/GPL v2, see LICENSE.TXT
+ *
+ * http://www.processwire.com
+ * http://www.ryancramer.com
+ *
+ */
+
+class PageTreeState extends WireData implements Module {
+
+    /**
+     * getModuleInfo is a module required by all modules to tell ProcessWire about them
+     *
+     * @return array
+     *
+     */
+    public static function getModuleInfo() {
+
+        return array(
+            'title' => 'Page Tree State',
+            'version' => 1,
+            'summary' => 'Persistent admin page tree, trigger and display most recent node. The persistent node is updated when editing or adding a new page.',
+            'href' => '',
+            'autoload' => true
+            );
+    }
+
+    public function init() {
+        $this->addHookBefore("ProcessPageEdit::execute", $this, "storeID");
+        $this->addHookBefore("ProcessPageAdd::execute", $this, "storeID");
+        $this->addHookBefore("ProcessPageList::execute", $this, "getID");
+    }
+
+    public function getID($event) {
+
+        $openPageID = $this->session->openPageID;
+      
+        if($openPageID != null) {
+
+            $_GET['open'] = $openPageID;
+            
+            // add javascript to select the open node
+            $this->modules->get("PageTreeState");
+            $this->config->scripts->append($this->config->urls->PageTreeState . "PageTreeState.js");
+        }
+        return;
+    }
+
+    public function storeID($event) {
+        
+        $openPageID = null;
+
+        // remember this page if editing
+        if(strpos($this->page->path,'/page/edit') > -1) {
+            
+            // get event object
+            $page = $event->object->getPage();
+            $openPageID = $page->id;
+        } 
+
+        // remember this page if adding new
+        elseif(strpos($this->page->path,'/page/add') > -1) {
+            $openPageID = $this->input->get->parent_id;
+        }
+        
+        // set in session
+        $this->session->set('openPageID',$openPageID);
+
+        return;
+    }
+}
